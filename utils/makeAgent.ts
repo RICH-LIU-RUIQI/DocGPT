@@ -1,9 +1,17 @@
 import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { ChatPromptTemplate } from 'langchain/prompts';
+import { ChatPromptTemplate, MessagesPlaceholder } from 'langchain/prompts';
 import { RunnableSequence } from 'langchain/schema/runnable';
 import { StringOutputParser } from 'langchain/schema/output_parser';
 import type { Document } from 'langchain/document';
 import type { VectorStoreRetriever } from 'langchain/vectorstores/base';
+import { formatForOpenAIFunctions } from 'langchain/agents/format_scratchpad';
+// import { TavilySearchResults } from '@langchain/community/tools/tavily_search';
+import { SearchApi } from '@langchain/community/tools/searchapi';
+import { convertToOpenAIFunction } from '@langchain/core/utils/function_calling';
+import { AgentExecutor } from 'langchain/agents';
+import { OpenAIFunctionsAgentOutputParser } from 'langchain/agents/openai/output_parser'
+// import { createRetrieverTool } from "langchain/agents/toolkits";
+import 'dotenv/config';
 
 const CONDENSE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
 
@@ -14,6 +22,7 @@ const CONDENSE_TEMPLATE = `Given the following conversation and a follow up ques
 Follow Up Input: {question}
 Standalone question:`;
 
+// ntc
 const QA_TEMPLATE = `You are an expert researcher. Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
 If the question is not related to the context or chat history, politely respond that you are tuned to only answer questions that are related to the context.
@@ -29,6 +38,12 @@ If the question is not related to the context or chat history, politely respond 
 Question: {question}
 Helpful answer in markdown:`;
 
+const searchTool = new SearchApi(process.env.SEARCHAPI_API_KEY, {
+    engine: 'google',
+});
+
+const allTools = [searchTool];
+
 const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
   const serializedDocs = docs.map((doc) => doc.pageContent);
   return serializedDocs.join(separator);
@@ -37,12 +52,26 @@ const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
 export const makeChain = (retriever: VectorStoreRetriever) => {
   const condenseQuestionPrompt =
     ChatPromptTemplate.fromTemplate(CONDENSE_TEMPLATE);
-  const answerPrompt = ChatPromptTemplate.fromTemplate(QA_TEMPLATE);
+  const answerTemplate = ChatPromptTemplate.fromTemplate(QA_TEMPLATE);
+  const finalPrompt = ChatPromptTemplate.fromMessages([
+    new MessagesPlaceholder("agent_scratchpad"),
+    answerTemplate,
+  ])
 
   const model = new ChatOpenAI({
     temperature: 0.5, // increase temperature to get more creative answers
     // modelName: 'gpt-4',
     modelName: 'gpt-3.5-turbo', //change this to gpt-4 if you have access
+  });
+
+  const answerModel = new ChatOpenAI({
+    temperature: 0, // increase temperature to get more creative answers
+    // modelName: 'gpt-4',
+    modelName: 'gpt-3.5-turbo', //change this to gpt-4 if you have access
+  });
+
+  const modelWithFunc = answerModel.bind({
+    functions: allTools.map((val) => convertToOpenAIFunction(val)),
   });
 
   // Rephrase the initial question into a dereferenced standalone question based on
@@ -58,29 +87,36 @@ export const makeChain = (retriever: VectorStoreRetriever) => {
 
   // Generate an answer to the standalone question based on the chat history
   // and retrieved documents. Additionally, we return the source documents directly.
-  const answerChain = RunnableSequence.from([
+  const answerAgent = RunnableSequence.from([
     {
       context: RunnableSequence.from([
         (input) => input.question,
         retrievalChain,
       ]),
       chat_history: (input) => input.chat_history,
-      question: (input) => input.question,
+      question: (input) => standaloneQuestionChain,
+      agent_scratchpad: (input) => formatForOpenAIFunctions(input.step),
     },
-    answerPrompt,
-    model,
-    new StringOutputParser(),
+    finalPrompt,
+    modelWithFunc,
+    new OpenAIFunctionsAgentOutputParser(),
   ]);
 
   // First generate a standalone question, then answer it based on
   // chat history and retrieved context documents.
-  const conversationalRetrievalQAChain = RunnableSequence.from([
+  const conversationalRetrievalQAAgent = RunnableSequence.from([
     {
       question: standaloneQuestionChain,
       chat_history: (input) => input.chat_history,
     },
-    answerChain,
+    answerAgent,
   ]);
 
-  return conversationalRetrievalQAChain;
+  const executor = AgentExecutor.fromAgentAndTools({
+    agent: answerAgent,
+    tools: allTools,
+  })
+  return executor;
+
+//   return conversationalRetrievalQAChain;
 };
