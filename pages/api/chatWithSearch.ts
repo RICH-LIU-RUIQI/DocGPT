@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { Document } from 'langchain/document';
-import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
-import { PineconeStore } from 'langchain/vectorstores/pinecone';
-import { makeChain } from '@/utils/makechain';
+import { OpenAIEmbeddings } from '@langchain/openai';
+import { PineconeStore } from '@langchain/pinecone';
+import { makeAgent } from '@/utils/makeAgent';
 import { pinecone } from '@/utils/pinecone-client';
 import { PINECONE_INDEX_NAME, PINECONE_NAME_SPACE } from '@/config/pinecone';
 
@@ -57,7 +57,7 @@ export default async function handler(
     });
 
     //create chain
-    const chain = makeChain(retriever);
+    const agent = makeAgent(retriever);
 
     const pastMessages = history
       .map((message: [string, string]) => {
@@ -67,17 +67,17 @@ export default async function handler(
     console.log(pastMessages);
 
     //Ask a question using chat history
-    const response = await chain.invoke({
+    const response = await agent.invoke({
       question: sanitizedQuestion,
       chat_history: pastMessages,
     });
 
     const sourceDocuments = await documentPromise;
 
-    console.log('response', response);
-    res.status(200).json({ text: response, sourceDocuments });
+    console.log('response ===', response);
+    res.status(200).json({ text: JSON.stringify(response.output), sourceDocuments });
   } catch (error: any) {
-    console.log('error', error);
+    console.log('error ===', error);
     res.status(500).json({ error: error.message || 'Something went wrong' });
   }
 }

@@ -1,10 +1,10 @@
-import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { ChatPromptTemplate, MessagesPlaceholder } from 'langchain/prompts';
-import { RunnableSequence } from 'langchain/schema/runnable';
-import { StringOutputParser } from 'langchain/schema/output_parser';
+import { ChatOpenAI } from '@langchain/openai';
+import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
+import { RunnableSequence } from '@langchain/core/runnables';
+import { StringOutputParser } from '@langchain/core/output_parsers';
 import type { Document } from 'langchain/document';
 import type { VectorStoreRetriever } from 'langchain/vectorstores/base';
-import { formatForOpenAIFunctions } from 'langchain/agents/format_scratchpad';
+import { formatToOpenAIFunctionMessages } from 'langchain/agents/format_scratchpad';
 // import { TavilySearchResults } from '@langchain/community/tools/tavily_search';
 import { SearchApi } from '@langchain/community/tools/searchapi';
 import { convertToOpenAIFunction } from '@langchain/core/utils/function_calling';
@@ -12,6 +12,7 @@ import { AgentExecutor } from 'langchain/agents';
 import { OpenAIFunctionsAgentOutputParser } from 'langchain/agents/openai/output_parser'
 // import { createRetrieverTool } from "langchain/agents/toolkits";
 import 'dotenv/config';
+import { Calculator } from 'langchain/tools/calculator';
 
 const CONDENSE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
 
@@ -25,7 +26,7 @@ Standalone question:`;
 // ntc
 const QA_TEMPLATE = `You are an expert researcher. Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
-If the question is not related to the context or chat history, politely respond that you are tuned to only answer questions that are related to the context.
+
 
 <context>
   {context}
@@ -42,14 +43,14 @@ const searchTool = new SearchApi(process.env.SEARCHAPI_API_KEY, {
     engine: 'google',
 });
 
-const allTools = [searchTool];
+const allTools = [searchTool, new Calculator()];
 
 const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
   const serializedDocs = docs.map((doc) => doc.pageContent);
   return serializedDocs.join(separator);
 };
 
-export const makeChain = (retriever: VectorStoreRetriever) => {
+export const makeAgent = (retriever: any) => {
   const condenseQuestionPrompt =
     ChatPromptTemplate.fromTemplate(CONDENSE_TEMPLATE);
   const answerTemplate = ChatPromptTemplate.fromTemplate(QA_TEMPLATE);
@@ -94,8 +95,12 @@ export const makeChain = (retriever: VectorStoreRetriever) => {
         retrievalChain,
       ]),
       chat_history: (input) => input.chat_history,
-      question: (input) => standaloneQuestionChain,
-      agent_scratchpad: (input) => formatForOpenAIFunctions(input.step),
+      question: (input) => input.question,
+      agent_scratchpad: (input) => {
+        // console.log('Input ===', input);
+        const res = formatToOpenAIFunctionMessages(input.steps);
+        // console.log('Input step-2 ===', res);
+        return res},
     },
     finalPrompt,
     modelWithFunc,
@@ -107,14 +112,19 @@ export const makeChain = (retriever: VectorStoreRetriever) => {
   const conversationalRetrievalQAAgent = RunnableSequence.from([
     {
       question: standaloneQuestionChain,
+      // @ts-ignore
       chat_history: (input) => input.chat_history,
+      // @ts-ignore
+      steps: (input: {}) => formatToOpenAIFunctionMessages(input.steps)
     },
     answerAgent,
   ]);
 
   const executor = AgentExecutor.fromAgentAndTools({
-    agent: answerAgent,
+    agent: conversationalRetrievalQAAgent,
     tools: allTools,
+    verbose: true,
+    returnIntermediateSteps: true,
   })
   return executor;
 

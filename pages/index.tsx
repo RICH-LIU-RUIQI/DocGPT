@@ -69,7 +69,7 @@ export default function Home() {
     setQuery('');
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/chatWithSearch', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ export default function Home() {
         }),
       });
       const data = await response.json();
-      console.log('data', data);
+      console.log('data from API ===', data);
 
       if (data.error) {
         setError(data.error);
