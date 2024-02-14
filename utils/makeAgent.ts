@@ -13,6 +13,7 @@ import { OpenAIFunctionsAgentOutputParser } from 'langchain/agents/openai/output
 // import { createRetrieverTool } from "langchain/agents/toolkits";
 import 'dotenv/config';
 import { Calculator } from 'langchain/tools/calculator';
+import { TavilySearchResults } from "@langchain/community/tools/tavily_search";
 
 const CONDENSE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
 
@@ -24,9 +25,8 @@ Follow Up Input: {question}
 Standalone question:`;
 
 // ntc
-const QA_TEMPLATE = `You are an expert researcher. Use the following pieces of context to answer the question at the end.
-If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
-
+const QA_TEMPLATE = `You are an expert researcher. You can Use the following pieces of context to answer the question at the end.
+If the context is of no use, consider the tools given to you.
 
 <context>
   {context}
@@ -39,8 +39,8 @@ If you don't know the answer, just say you don't know. DO NOT try to make up an 
 Question: {question}
 Helpful answer in markdown:`;
 
-const searchTool = new SearchApi(process.env.SEARCHAPI_API_KEY, {
-    engine: 'google',
+const searchTool = new TavilySearchResults({
+  apiKey: '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',
 });
 
 const allTools = [searchTool, new Calculator()];
@@ -96,11 +96,7 @@ export const makeAgent = (retriever: any) => {
       ]),
       chat_history: (input) => input.chat_history,
       question: (input) => input.question,
-      agent_scratchpad: (input) => {
-        // console.log('Input ===', input);
-        const res = formatToOpenAIFunctionMessages(input.steps);
-        // console.log('Input step-2 ===', res);
-        return res},
+      agent_scratchpad: (input) => formatToOpenAIFunctionMessages(input.steps),
     },
     finalPrompt,
     modelWithFunc,
@@ -115,7 +111,7 @@ export const makeAgent = (retriever: any) => {
       // @ts-ignore
       chat_history: (input) => input.chat_history,
       // @ts-ignore
-      steps: (input: {}) => formatToOpenAIFunctionMessages(input.steps)
+      steps: (input) => input.steps,
     },
     answerAgent,
   ]);
@@ -124,9 +120,8 @@ export const makeAgent = (retriever: any) => {
     agent: conversationalRetrievalQAAgent,
     tools: allTools,
     verbose: true,
-    returnIntermediateSteps: true,
+    returnIntermediateSteps: false,
   })
-  return executor;
 
-//   return conversationalRetrievalQAChain;
+  return executor;
 };

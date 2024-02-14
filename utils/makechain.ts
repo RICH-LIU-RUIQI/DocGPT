@@ -15,9 +15,8 @@ const CONDENSE_TEMPLATE = `Given the following conversation and a follow up ques
 Follow Up Input: {question}
 Standalone question:`;
 
-const QA_TEMPLATE = `You are an expert researcher. Use the following pieces of context to answer the question at the end.
-If you don't know the answer, just say you don't know. DO NOT try to make up an answer.
-If the question is not related to the context or chat history, politely respond that you are tuned to only answer questions that are related to the context.
+const QA_TEMPLATE = ` Use the following pieces of context to answer the question at the end.
+DO NOT try to make up an answer.
 
 <context>
   {context}
@@ -30,6 +29,12 @@ If the question is not related to the context or chat history, politely respond 
 Question: {question}
 Helpful answer in markdown:`;
 
+const SYS_TEMPLATE = `
+You will be provided with a document delimited by triple quotes and a question.
+Your task is to answer the question using only the provided document and to cite the passage(s) of the document used to answer the question.
+If an answer to the question is provided, it must be annotated with in-text citations. 
+`
+
 const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
   const serializedDocs = docs.map((doc) => doc.pageContent);
   return serializedDocs.join(separator);
@@ -39,9 +44,13 @@ export const makeChain = (retriever:any) => {
   const condenseQuestionPrompt =
     ChatPromptTemplate.fromTemplate(CONDENSE_TEMPLATE);
   const answerPrompt = ChatPromptTemplate.fromTemplate(QA_TEMPLATE);
+  const finalPrompt = ChatPromptTemplate.fromMessages([
+    ['system', SYS_TEMPLATE],
+    answerPrompt,
+  ]);
 
   const model = new ChatOpenAI({
-    temperature: 0.5, // increase temperature to get more creative answers
+    temperature: 0.4, // increase temperature to get more creative answers
     // modelName: 'gpt-4',
     modelName: 'gpt-3.5-turbo', //change this to gpt-4 if you have access
   });
@@ -68,7 +77,7 @@ export const makeChain = (retriever:any) => {
       chat_history: (input) => input.chat_history,
       question: (input) => input.question,
     },
-    answerPrompt,
+    finalPrompt,
     model,
     new StringOutputParser(),
   ]);

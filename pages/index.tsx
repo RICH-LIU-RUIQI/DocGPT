@@ -5,6 +5,8 @@ import { Message } from '@/types/chat';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import LoadingDots from '@/components/ui/LoadingDots';
+import { IOSSwitch } from '@/components/ui/Switches';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import { Document } from 'langchain/document';
 import {
   Accordion,
@@ -14,9 +16,21 @@ import {
 } from '@/components/ui/accordion';
 
 export default function Home() {
+  const apiDict = {
+    withSearch: '/api/chatWithSearch',
+    onlyDocus: '/api/chat',
+  }
+  
   const [query, setQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [functionState, setFunctionState] = useState<{
+    search: boolean;
+    historySummary: boolean;
+  }>({
+    search: false,
+    historySummary: false,
+  });
   const [messageState, setMessageState] = useState<{
     messages: Message[];
     pending?: string;
@@ -43,6 +57,8 @@ export default function Home() {
 
   //handle form submission
   async function handleSubmit(e: any) {
+    let api: string;
+
     e.preventDefault();
 
     setError(null);
@@ -69,7 +85,9 @@ export default function Home() {
     setQuery('');
 
     try {
-      const response = await fetch('/api/chatWithSearch', {
+      api = functionState.search ? apiDict.withSearch : apiDict.onlyDocus;
+      console.log('The API is ', api);
+      const response = await fetch(api, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -124,9 +142,48 @@ export default function Home() {
     <>
       <Layout>
         <div className="mx-auto flex flex-col gap-4">
-          <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter text-center">
-            Chat With Your Docs
-          </h1>
+          <div style={{ display: 'flex' }}>
+            <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter ">
+              DocChat
+            </h1>
+            <div id="switch label" style={{ flexGrow: 1 }}>
+              <FormControlLabel
+                control={
+                  <IOSSwitch
+                    onChange={(e) => {
+                      setFunctionState((state) => ({
+                        search: !state.search,
+                        historySummary: state.historySummary,
+                      }));
+                    }}
+                  />
+                }
+                label="Internet Search"
+                style={{ float: 'right' }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex' }}>
+            <h4 className=" tracking-tighter ">
+              GPT exclusive for your documents :)
+            </h4>
+            <div id="switch label" style={{ flexGrow: 1 }}>
+              <FormControlLabel
+                control={
+                  <IOSSwitch
+                    onChange={(e) => {
+                      setFunctionState((state) => ({
+                        search: state.search,
+                        historySummary: !state.historySummary,
+                      }));
+                    }}
+                  />
+                }
+                label="History Summary"
+                style={{ float: 'right' }}
+              />
+            </div>
+          </div>
           <main className={styles.main}>
             <div className={styles.cloud}>
               <div ref={messageListRef} className={styles.messagelist}>

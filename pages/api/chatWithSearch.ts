@@ -3,8 +3,12 @@ import type { Document } from 'langchain/document';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { PineconeStore } from '@langchain/pinecone';
 import { makeAgent } from '@/utils/makeAgent';
+import { makeAgentSearch } from '@/utils/makeAgentSearch'; 
 import { pinecone } from '@/utils/pinecone-client';
 import { PINECONE_INDEX_NAME, PINECONE_NAME_SPACE } from '@/config/pinecone';
+import allTools from '@/utils/tools';
+import { ChatMessageHistory } from 'langchain/stores/message/in_memory';
+import { AIMessage, HumanMessage } from '@langchain/core/messages';
 
 
 export default async function handler(
@@ -12,6 +16,8 @@ export default async function handler(
   res: NextApiResponse,
 ) {
   const { question, history } = req.body;
+
+  const chatHistory = new ChatMessageHistory();
 
   console.log('question', question);
   console.log('history', history);
@@ -57,25 +63,36 @@ export default async function handler(
     });
 
     //create chain
-    const agent = makeAgent(retriever);
+    // const agent = makeAgent(retriever);
+    const agent = makeAgentSearch(retriever);
 
-    const pastMessages = history
-      .map((message: [string, string]) => {
-        return [`Human: ${message[0]}`, `Assistant: ${message[1]}`].join('\n');
-      })
-      .join('\n');
-    console.log(pastMessages);
+    const passPastMsg = (history: [string, string][], chatHistory: ChatMessageHistory) => {
+      history.forEach((message: [string, string], idx: number) => {
+        chatHistory.addMessage(new HumanMessage(message[0]));
+        chatHistory.addMessage(new AIMessage(message[1]));
+      });
+    };
+    passPastMsg(history, chatHistory);
 
-    //Ask a question using chat history
+    chatHistory.getMessages();
+
+    // const pastMessages = history
+    //   .map((message: [string, string]) => {
+    //     return [`Human: ${message[0]}`, `Assistant: ${message[1]}`].join('\n');
+    //   })
+    //   .join('\n');
+    // console.log(pastMessages);
+
     const response = await agent.invoke({
       question: sanitizedQuestion,
-      chat_history: pastMessages,
+      chat_history: chatHistory,
+      tools: allTools,
     });
 
     const sourceDocuments = await documentPromise;
 
     console.log('response ===', response);
-    res.status(200).json({ text: JSON.stringify(response.output), sourceDocuments });
+    res.status(200).json({ text: response.output, sourceDocuments });
   } catch (error: any) {
     console.log('error ===', error);
     res.status(500).json({ error: error.message || 'Something went wrong' });
