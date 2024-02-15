@@ -6,6 +6,7 @@ import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import LoadingDots from '@/components/ui/LoadingDots';
 import { IOSSwitch } from '@/components/ui/Switches';
+import SettingsIcon from '@mui/icons-material/Settings';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { Document } from 'langchain/document';
 import {
@@ -14,6 +15,12 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
+import { Button } from '@mui/material';
 
 export default function Home() {
   const apiDict = {
@@ -23,6 +30,7 @@ export default function Home() {
   
   const [query, setQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [diaShow, setDiaShow] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [functionState, setFunctionState] = useState<{
     search: boolean;
@@ -141,7 +149,10 @@ export default function Home() {
   return (
     <>
       <Layout>
-        <div className="mx-auto flex flex-col gap-4">
+      <div style={{ display: 'flex',  justifyContent: 'flex-end', marginRight: '1%'}}>
+        <SettingsIcon onClick={ () => setDiaShow(true)} />
+      </div>
+        <div className="mx-auto flex flex-col gap-4" id='whole-content'>
           <div style={{ display: 'flex' }}>
             <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter ">
               DocChat
@@ -318,11 +329,33 @@ export default function Home() {
           </main>
         </div>
         <footer className="m-auto p-4">
-          <a href="https://twitter.com/mayowaoshin">
-            Powered by LangChainAI. Demo built by Mayo (Twitter: @mayowaoshin).
-          </a>
+            Powered by LangChain.js. Demo built by Rich L.
         </footer>
       </Layout>
+      <Dialog
+        open={diaShow}
+        onClose={() => setDiaShow(false)}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"Settings"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Language (Better same as PDF language)
+          </DialogContentText>
+          <DialogContentText id="alert-dialog-description">
+            History Input Number
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDiaShow(true)}>Disagree</Button>
+          <Button onClick={() => setDiaShow(false)} autoFocus>
+            Agree
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
