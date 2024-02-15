@@ -15,7 +15,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  const { question, history } = req.body;
+  const { question, history, language } = req.body;
 
   const chatHistory = new ChatMessageHistory();
 
@@ -64,7 +64,7 @@ export default async function handler(
 
     //create chain
     // const agent = makeAgent(retriever);
-    const agent = makeAgentSearch(retriever);
+    const agent = makeAgentSearch(retriever, language);
 
     const passPastMsg = (history: [string, string][], chatHistory: ChatMessageHistory) => {
       history.forEach((message: [string, string], idx: number) => {

@@ -1,5 +1,4 @@
 import 'dotenv/config';
-import { ConsoleCallbackHandler } from '@langchain/core/tracers/console';
 import { ChatOpenAI } from '@langchain/openai';
 import {
   ChatPromptTemplate,
@@ -9,13 +8,12 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import { StringOutputParser } from '@langchain/core/output_parsers';
 import type { Document } from 'langchain/document';
 import { formatToOpenAIFunctionMessages } from 'langchain/agents/format_scratchpad';
-import { convertToOpenAIFunction } from '@langchain/core/utils/function_calling';
 import { AgentExecutor } from 'langchain/agents';
 import { OpenAIFunctionsAgentOutputParser } from 'langchain/agents/openai/output_parser';
 import { renderTextDescription } from 'langchain/tools/render';
 import allTools from './tools';
 import { SYS_CITE, CONDENSE_TEMPLATE, QA_TEMPLATE } from './prompts.js';
-import { BaseMessage } from '@langchain/core/messages';
+import { SYS_CH, CONDENSE_TEMPLATE_CH, QA_TEMPLATE_CH } from './promptsCh';
 import { ChatMessageHistory } from 'langchain/stores/message/in_memory';
 
 const LAST_CONVERSATIONS = 2;
@@ -24,7 +22,7 @@ const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
   return serializedDocs.join(separator);
 };
 
-export const makeAgentSearch = (retriever: any) => {
+export const makeAgentSearch = (retriever: any, language: number) => {
 
   const trimMsg = async (chatHistory: ChatMessageHistory) => {
     const storedMsg = await chatHistory.getMessages();
@@ -56,16 +54,21 @@ export const makeAgentSearch = (retriever: any) => {
     return chatHistory.getMessages();
   }
 
-  const condenseQuestionPrompt =
-    ChatPromptTemplate.fromTemplate(CONDENSE_TEMPLATE);
-  const answerTemplate = ChatPromptTemplate.fromTemplate(QA_TEMPLATE);
-  const finalPrompt = ChatPromptTemplate.fromMessages([
+  const condenseQuestionPrompt = language === 0 ? ChatPromptTemplate.fromTemplate(  CONDENSE_TEMPLATE ) : ChatPromptTemplate.fromTemplate(  CONDENSE_TEMPLATE_CH );
+  const answerTemplate = language === 0 ? ChatPromptTemplate.fromTemplate(  QA_TEMPLATE ) : ChatPromptTemplate.fromTemplate(  QA_TEMPLATE_CH );
+  const finalPrompt = language === 0 ? ChatPromptTemplate.fromMessages([
     ['system', SYS_CITE],
     new MessagesPlaceholder('agent_scratchpad'),
     answerTemplate,
+  ]) : ChatPromptTemplate.fromMessages([
+    ['system', SYS_CH],
+    new MessagesPlaceholder('agent_scratchpad'),
+    answerTemplate,
   ]);
-  const generatePrompt = ChatPromptTemplate.fromTemplate(
+  const generatePrompt = language === 0 ? ChatPromptTemplate.fromTemplate(
     `Turn the following user input into a search query for a search engine: {question}`,
+  ) : ChatPromptTemplate.fromTemplate(
+    `将以下用户输入转化为搜索引擎的搜索查询：{question}`,
   );
 
   const model = new ChatOpenAI({

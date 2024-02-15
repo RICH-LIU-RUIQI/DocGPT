@@ -14,6 +14,14 @@ const CONDENSE_TEMPLATE = `Given the following conversation and a follow up ques
 
 Follow Up Input: {question}
 Standalone question:`;
+const CONDENSE_TEMPLATE_CH = `给定下面的对话和一个后续问题，将后续问题改写成一个独立的问题。
+
+<chat_history>
+  {chat_history}
+</chat_history>
+
+后续输入： {question}
+独立问题：`;
 
 const QA_TEMPLATE = ` Use the following pieces of context to answer the question at the end.
 DO NOT try to make up an answer.
@@ -29,10 +37,27 @@ DO NOT try to make up an answer.
 Question: {question}
 Helpful answer in markdown:`;
 
+const QA_TEMPLATE_CH = ` 根据以下上下文回答最后的问题。
+不要试图编造答案。
+
+<context>
+  {context}
+</context>
+
+<chat_history>
+  {chat_history}
+</chat_history>
+
+Question: {question}
+用markdown给出你的答案:`;
+
 const SYS_TEMPLATE = `
-You will be provided with a document delimited by triple quotes and a question.
 Your task is to answer the question using only the provided document and to cite the passage(s) of the document used to answer the question.
 If an answer to the question is provided, it must be annotated with in-text citations. 
+`
+const SYS_TEMPLATE_CH = `
+您的任务是仅使用所提供的文件回答问题，并引用用于回答问题的文件段落。
+如果提供了问题的答案，则必须用文中引文加以注释。
 `
 
 const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
@@ -40,14 +65,16 @@ const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
   return serializedDocs.join(separator);
 };
 
-export const makeChain = (retriever:any) => {
-  const condenseQuestionPrompt =
-    ChatPromptTemplate.fromTemplate(CONDENSE_TEMPLATE);
-  const answerPrompt = ChatPromptTemplate.fromTemplate(QA_TEMPLATE);
-  const finalPrompt = ChatPromptTemplate.fromMessages([
+export const makeChain = (retriever:any, language:number) => {
+  const condenseQuestionPrompt = language === 0 ? ChatPromptTemplate.fromTemplate(CONDENSE_TEMPLATE) : ChatPromptTemplate.fromTemplate(CONDENSE_TEMPLATE_CH);
+  const answerPrompt = language === 0 ? ChatPromptTemplate.fromTemplate(QA_TEMPLATE) : ChatPromptTemplate.fromTemplate(QA_TEMPLATE_CH);
+  const finalPrompt = language === 0 ? ChatPromptTemplate.fromMessages([
     ['system', SYS_TEMPLATE],
     answerPrompt,
-  ]);
+  ]) : ChatPromptTemplate.fromMessages([
+    ['system', SYS_TEMPLATE_CH],
+    answerPrompt,
+  ])
 
   const model = new ChatOpenAI({
     temperature: 0.4, // increase temperature to get more creative answers

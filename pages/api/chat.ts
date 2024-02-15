@@ -10,7 +10,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  const { question, history } = req.body;
+  const { question, history, language } = req.body;
 
   console.log('question', question);
   console.log('history', history);
@@ -56,7 +56,7 @@ export default async function handler(
     });
 
     //create chain
-    const chain = makeChain(retriever);
+    const chain = makeChain(retriever, language);
 
     const pastMessages = history
       .map((message: [string, string]) => {

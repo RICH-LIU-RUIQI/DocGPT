@@ -21,13 +21,17 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import { Button } from '@mui/material';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
 
 export default function Home() {
   const apiDict = {
     withSearch: '/api/chatWithSearch',
     onlyDocus: '/api/chat',
-  }
-  
+  };
+
   const [query, setQuery] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [diaShow, setDiaShow] = useState<boolean>(false);
@@ -35,9 +39,11 @@ export default function Home() {
   const [functionState, setFunctionState] = useState<{
     search: boolean;
     historySummary: boolean;
+    language: number; // 0 for english, 1 for chinese
   }>({
     search: false,
     historySummary: false,
+    language: 0,
   });
   const [messageState, setMessageState] = useState<{
     messages: Message[];
@@ -103,6 +109,7 @@ export default function Home() {
         body: JSON.stringify({
           question,
           history,
+          language: functionState.language,
         }),
       });
       const data = await response.json();
@@ -149,10 +156,16 @@ export default function Home() {
   return (
     <>
       <Layout>
-      <div style={{ display: 'flex',  justifyContent: 'flex-end', marginRight: '1%'}}>
-        <SettingsIcon onClick={ () => setDiaShow(true)} />
-      </div>
-        <div className="mx-auto flex flex-col gap-4" id='whole-content'>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginRight: '1%',
+          }}
+        >
+          <SettingsIcon onClick={() => setDiaShow(true)} />
+        </div>
+        <div className="mx-auto flex flex-col gap-4" id="whole-content">
           <div style={{ display: 'flex' }}>
             <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter ">
               DocChat
@@ -165,6 +178,7 @@ export default function Home() {
                       setFunctionState((state) => ({
                         search: !state.search,
                         historySummary: state.historySummary,
+                        language: state.language,
                       }));
                     }}
                   />
@@ -186,6 +200,7 @@ export default function Home() {
                       setFunctionState((state) => ({
                         search: state.search,
                         historySummary: !state.historySummary,
+                        language: state.language,
                       }));
                     }}
                   />
@@ -329,7 +344,7 @@ export default function Home() {
           </main>
         </div>
         <footer className="m-auto p-4">
-            Powered by LangChain.js. Demo built by Rich L.
+          Powered by LangChain.js. Demo built by Rich L.
         </footer>
       </Layout>
       <Dialog
@@ -338,21 +353,57 @@ export default function Home() {
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
       >
-        <DialogTitle id="alert-dialog-title">
-          {"Settings"}
-        </DialogTitle>
+        <DialogTitle id="alert-dialog-title">{'Settings'}</DialogTitle>
         <DialogContent>
+          <FormControl>
+            <FormLabel id="demo-row-radio-buttons-group-label">
+              Language
+            </FormLabel>
+            <RadioGroup
+              row
+              aria-labelledby="demo-row-radio-buttons-group-label"
+              name="row-radio-buttons-group"
+              defaultValue={functionState.language}
+            >
+              <FormControlLabel
+                value={0}
+                control={
+                  <Radio
+                    onClick={(e) => {
+                      setFunctionState((state) => ({
+                        search: state.search,
+                        historySummary: state.historySummary,
+                        language: 0,
+                      }));
+                    }}
+                  />
+                }
+                label="English"
+              />
+              <FormControlLabel
+                value={1}
+                control={
+                  <Radio
+                    onClick={(e) => {
+                      setFunctionState((state) => ({
+                        search: state.search,
+                        historySummary: state.historySummary,
+                        language: 1,
+                      }));
+                    }}
+                  />
+                }
+                label="Chinese"
+              />
+            </RadioGroup>
+          </FormControl>
           <DialogContentText id="alert-dialog-description">
-            Language (Better same as PDF language)
-          </DialogContentText>
-          <DialogContentText id="alert-dialog-description">
-            History Input Number
+            Clear Chat History
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDiaShow(true)}>Disagree</Button>
           <Button onClick={() => setDiaShow(false)} autoFocus>
-            Agree
+            Close
           </Button>
         </DialogActions>
       </Dialog>
