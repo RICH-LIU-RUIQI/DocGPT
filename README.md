@@ -1,14 +1,10 @@
-# GPT-4 & LangChain - Create a ChatGPT Chatbot for Your PDF Files
+# GPT-4 & LangChain.js - Create a updated Chatbot for Your PDF Files
 
-Use the new GPT-4 api to build a chatGPT chatbot for multiple Large PDF files.
+Use the GPT-4 api to build a chatGPT chatbot for PDF files who can provide latest information in the Internet.
 
-Tech stack used includes LangChain, Pinecone, Typescript, Openai, and Next.js. LangChain is a framework that makes it easier to build scalable AI/LLM apps and chatbots. Pinecone is a vectorstore for storing embeddings and your PDF in text to later retrieve similar docs.
+Tech stack used includes LangChain, LangSmith, Pinecone, Typescript, Openai, and Next.js. LangChain is a framework that makes it easier to build scalable AI/LLM apps and chatbots. Pinecone is a vectorstore for storing embeddings and your PDF in text to later retrieve similar docs.
 
-[Tutorial video](https://www.youtube.com/watch?v=ih9PBGVVOO4)
-
-[Join the discord if you have questions](https://discord.gg/E4Mc77qwjm)
-
-The visual guide of this repo and tutorial is in the `visual guide` folder.
+Based on [gpt4-pdf-chatbot-langchain](https://github.com/mayooear/gpt4-pdf-chatbot-langchain/tree/main) by mayooear.
 
 **If you run into errors, please review the troubleshooting section further down this page.**
 
@@ -44,13 +40,20 @@ OPENAI_API_KEY=
 
 PINECONE_API_KEY=
 PINECONE_ENVIRONMENT=
-
 PINECONE_INDEX_NAME=
+TAVILY_API_KEY=
+SEARCHAPI_API_KEY =
+
+LANGCHAIN_TRACING_V2=
+LANGCHAIN_API_KEY=
+LANGCHAIN_PROJECT=
+LANGCHAIN_ENDPOINT=
 
 ```
 
 - Visit [openai](https://help.openai.com/en/articles/4936850-where-do-i-find-my-secret-api-key) to retrieve API keys and insert into your `.env` file.
 - Visit [pinecone](https://pinecone.io/) to create and retrieve your API keys, and also retrieve your environment and index name from the dashboard.
+- Visit [langsmith](https://www.langchain.com/langsmith) for debug and see what' going on in your LLM chain.
 
 4. In the `config` folder, replace the `PINECONE_NAME_SPACE` with a `namespace` where you'd like to store your embeddings on Pinecone when you run `npm run ingest`. This namespace will later be used for queries and retrieval.
 
@@ -70,21 +73,7 @@ PINECONE_INDEX_NAME=
 
 Once you've verified that the embeddings and content have been successfully added to your Pinecone, you can run the app `npm run dev` to launch the local dev environment, and then type a question in the chat interface.
 
-## Troubleshooting
 
-In general, keep an eye out in the `issues` and `discussions` section of this repo for solutions.
-
-**General errors**
-
-- Make sure you're running the latest Node version. Run `node -v`
-- Try a different PDF or convert your PDF to text first. It's possible your PDF is corrupted, scanned, or requires OCR to convert to text.
-- `Console.log` the `env` variables and make sure they are exposed.
-- Make sure you're using the same versions of LangChain and Pinecone as this repo.
-- Check that you've created an `.env` file that contains your valid (and working) API keys, environment and index name.
-- If you change `modelName` in `OpenAI`, make sure you have access to the api for the appropriate model.
-- Make sure you have enough OpenAI credits and a valid card on your billings account.
-- Check that you don't have multiple OPENAPI keys in your global environment. If you do, the local `env` file from the project will be overwritten by systems `env` variable.
-- Try to hard code your API keys into the `process.env` variables if there are still issues.
 
 **Pinecone errors**
 
