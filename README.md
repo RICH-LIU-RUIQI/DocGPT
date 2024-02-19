@@ -1,4 +1,6 @@
 # GPT-4 & LangChain.js - Create a updated Chatbot for Your PDF Files
+<img width="951" alt="Screenshot 2024-02-19 004849" src="https://github.com/RICH-LIU-RUIQI/DocGPT/assets/73057393/9c9eabf4-fe78-42b6-86b2-f78c62639dba">
+
 
 Use the GPT-4 api to build a chatGPT chatbot for PDF files who can provide latest information in the Internet.
 
