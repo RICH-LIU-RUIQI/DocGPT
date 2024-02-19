@@ -29,7 +29,7 @@ import RadioGroup from '@mui/material/RadioGroup';
 export default function Home() {
   const apiDict = {
     withSearch: '/api/chatWithSearch',
-    onlyDocus: '/api/chat',
+    onlyDocs: '/api/chat',
   };
 
   const [query, setQuery] = useState<string>('');
@@ -99,8 +99,7 @@ export default function Home() {
     setQuery('');
 
     try {
-      api = functionState.search ? apiDict.withSearch : apiDict.onlyDocus;
-      console.log('The API is ', api);
+      api = functionState.search ? apiDict.withSearch : apiDict.onlyDocs;
       const response = await fetch(api, {
         method: 'POST',
         headers: {

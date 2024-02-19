@@ -33,6 +33,7 @@ The answer-2 must be annotated with a citation. The citation should include URL 
 3. Offer the final answer with the format as:\  
 <Summary> \n
 From the content in the files: answer-1. \n From the material in the Internet: answer-2.\n
+4. If none of them provide you answer, use the tools given. \n
 `
 
 export const CONDENSE_TEMPLATE = `Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.

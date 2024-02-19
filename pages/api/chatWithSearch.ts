@@ -9,6 +9,7 @@ import { PINECONE_INDEX_NAME, PINECONE_NAME_SPACE } from '@/config/pinecone';
 import allTools from '@/utils/tools';
 import { ChatMessageHistory } from 'langchain/stores/message/in_memory';
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
+import { resolve } from 'path';
 
 
 export default async function handler(
@@ -64,7 +65,7 @@ export default async function handler(
 
     //create chain
     // const agent = makeAgent(retriever);
-    const agent = makeAgentSearch(retriever, language);
+    const agentExecutor = makeAgentSearch(retriever, language);
 
     const passPastMsg = (history: [string, string][], chatHistory: ChatMessageHistory) => {
       history.forEach((message: [string, string], idx: number) => {
@@ -75,26 +76,43 @@ export default async function handler(
     passPastMsg(history, chatHistory);
 
     chatHistory.getMessages();
+    // let response;
 
-    // const pastMessages = history
-    //   .map((message: [string, string]) => {
-    //     return [`Human: ${message[0]}`, `Assistant: ${message[1]}`].join('\n');
-    //   })
-    //   .join('\n');
-    // console.log(pastMessages);
+    // const task1 = async () => {
+    //   response = await agentExecutor.invoke({
+    //     question: sanitizedQuestion,
+    //     chat_history: chatHistory,
+    //     tools: allTools,
+    //     // timeout: 5*60*1000,
+    //   });
+    //   const sourceDocuments = await documentPromise;
+    //   res.status(200).json({ text: response.output, sourceDocuments });
+    // };
 
-    const response = await agent.invoke({
+    // const task2 = async () => {
+    //   setTimeout(()=> {
+    //     console.log('Time limit');
+    //   }, 5*1000);
+    //  throw {message: 'Time limit 300s'};
+    // }
+
+    // Promise.race([task1, task2]);
+    const response = await agentExecutor.invoke({
       question: sanitizedQuestion,
       chat_history: chatHistory,
       tools: allTools,
+      timeout: 5*60*1000,
     });
 
     const sourceDocuments = await documentPromise;
 
-    console.log('response ===', response);
+    // console.log('response ===', response);
     res.status(200).json({ text: response.output, sourceDocuments });
   } catch (error: any) {
     console.log('error ===', error);
+    if(error.message === 'AbortError') {
+      res.status(500).json({ error: 'AbortError: Time Limit 300s' });
+    }
     res.status(500).json({ error: error.message || 'Something went wrong' });
   }
 }

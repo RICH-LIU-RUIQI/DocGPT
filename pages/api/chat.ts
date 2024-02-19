@@ -5,6 +5,8 @@ import { PineconeStore } from '@langchain/pinecone';
 import { makeChain } from '@/utils/makechain';
 import { pinecone } from '@/utils/pinecone-client';
 import { PINECONE_INDEX_NAME, PINECONE_NAME_SPACE } from '@/config/pinecone';
+import { resolve } from 'path';
+import { rejects } from 'assert';
 
 export default async function handler(
   req: NextApiRequest,
@@ -65,18 +67,39 @@ export default async function handler(
       .join('\n');
     console.log(pastMessages);
 
-    //Ask a question using chat history
-    const response = await chain.invoke({
-      question: sanitizedQuestion,
-      chat_history: pastMessages,
-    });
+    try {
+      const response = await Promise.race([
+        chain.invoke({
+          question: sanitizedQuestion,
+          chat_history: pastMessages,
+        }),
+        new Promise((resolve, reject) =>
+          setTimeout(() => reject(new Error('Time Limit 300s')), 5 * 60 * 1000),
+        ),
+      ]);
+      const sourceDocuments = await documentPromise;
 
-    const sourceDocuments = await documentPromise;
+      // console.log('response', response);
+      res.status(200).json({ text: response, sourceDocuments });
+    } catch (error) {
+      throw error;
+    }
 
-    console.log('response', response);
-    res.status(200).json({ text: response, sourceDocuments });
+    // const response = await chain.invoke({
+    //   question: sanitizedQuestion,
+    //   chat_history: pastMessages,
+    // },
+    // );
+
+    // const sourceDocuments = await documentPromise;
+
+    // // console.log('response', response);
+    // res.status(200).json({ text: response, sourceDocuments });
   } catch (error: any) {
     console.log('error', error);
+    if (error.message === 'AbortError') {
+      res.status(500).json({ error: 'AbortError: Time Limit 300s' });
+    }
     res.status(500).json({ error: error.message || 'Something went wrong' });
   }
 }

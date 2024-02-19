@@ -22,7 +22,7 @@ const combineDocumentsFn = (docs: Document[], separator = '\n\n') => {
   return serializedDocs.join(separator);
 };
 
-export const makeAgentSearch = (retriever: any, language: number) => {
+export const makeAgentSearch = (retriever: any, language: number): AgentExecutor => {
 
   const trimMsg = async (chatHistory: ChatMessageHistory) => {
     const storedMsg = await chatHistory.getMessages();
