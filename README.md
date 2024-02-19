@@ -1,12 +1,12 @@
 # GPT-4 & LangChain.js - Create a updated Chatbot for Your PDF Files
+<img width="951" alt="Screenshot 2024-02-19 004849" src="https://github.com/RICH-LIU-RUIQI/DocGPT/assets/73057393/9c9eabf4-fe78-42b6-86b2-f78c62639dba">
+
 
 Use the GPT-4 api to build a chatGPT chatbot for PDF files who can provide latest information in the Internet.
 
 Tech stack used includes LangChain, LangSmith, Pinecone, Typescript, Openai, and Next.js. LangChain is a framework that makes it easier to build scalable AI/LLM apps and chatbots. Pinecone is a vectorstore for storing embeddings and your PDF in text to later retrieve similar docs.
 
 Based on [gpt4-pdf-chatbot-langchain](https://github.com/mayooear/gpt4-pdf-chatbot-langchain/tree/main) by mayooear.
-
-**If you run into errors, please review the troubleshooting section further down this page.**
 
 Prelude: Please make sure you have already downloaded node on your system and the version is 18 or greater.
 
