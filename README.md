@@ -6,8 +6,6 @@ Tech stack used includes LangChain, LangSmith, Pinecone, Typescript, Openai, and
 
 Based on [gpt4-pdf-chatbot-langchain](https://github.com/mayooear/gpt4-pdf-chatbot-langchain/tree/main) by mayooear.
 
-**If you run into errors, please review the troubleshooting section further down this page.**
-
 Prelude: Please make sure you have already downloaded node on your system and the version is 18 or greater.
 
 ## Development
