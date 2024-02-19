@@ -15,6 +15,7 @@ export default async function handler(
   const { question, history, language } = req.body;
 
   console.log('question', question);
+  console.log('----------------------------------------------------------------------------------');
   console.log('history', history);
 
   //only accept post requests
@@ -65,7 +66,7 @@ export default async function handler(
         return [`Human: ${message[0]}`, `Assistant: ${message[1]}`].join('\n');
       })
       .join('\n');
-    console.log(pastMessages);
+    // console.log(pastMessages);
 
     try {
       const response = await Promise.race([

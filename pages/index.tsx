@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import LoadingDots from '@/components/ui/LoadingDots';
 import { IOSSwitch } from '@/components/ui/Switches';
 import SettingsIcon from '@mui/icons-material/Settings';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import { Document } from 'langchain/document';
 import {
@@ -70,33 +71,50 @@ export default function Home() {
   }, []);
 
   //handle form submission
-  async function handleSubmit(e: any) {
+  async function handleSubmit(e: any, reGenerate?: any) {
     let api: string;
+    let question: string;
+    let tmpHistory: [string, string][] | undefined;
+    const reQuery = async (): Promise<string> => {
+      const questionDict = messages.at(-2) as Message;
+      tmpHistory = messageState.history.slice(0, messageState.history.length - 1);
+      setMessageState((state) => ({
+        history: 
+          state.history.slice(0, state.history.length - 1),
+        messages: 
+          state.messages.slice(0, state.messages.length - 1),
+      }));
+      return questionDict.message;
+    };
 
     e.preventDefault();
 
     setError(null);
+    if (reGenerate == true) {
+      question = await reQuery();
+    } else {
+      if (!query) {
+        alert('Please input a question');
+        return;
+      }
 
-    if (!query) {
-      alert('Please input a question');
-      return;
+      question = query.trim();
+
+      setMessageState((state) => ({
+        ...state,
+        messages: [
+          ...state.messages,
+          {
+            type: 'userMessage',
+            message: question,
+          },
+        ],
+      }));
     }
-
-    const question = query.trim();
-
-    setMessageState((state) => ({
-      ...state,
-      messages: [
-        ...state.messages,
-        {
-          type: 'userMessage',
-          message: question,
-        },
-      ],
-    }));
 
     setLoading(true);
     setQuery('');
+    console.log('messageState ===', messageState);
 
     try {
       api = functionState.search ? apiDict.withSearch : apiDict.onlyDocs;
@@ -107,12 +125,12 @@ export default function Home() {
         },
         body: JSON.stringify({
           question,
-          history,
+          history: tmpHistory === undefined ? history : tmpHistory,
           language: functionState.language,
         }),
       });
       const data = await response.json();
-      console.log('data from API ===', data);
+      // console.log('data from API ===', data);
 
       if (data.error) {
         setError(data.error);
@@ -254,6 +272,19 @@ export default function Home() {
                           <ReactMarkdown linkTarget="_blank">
                             {message.message}
                           </ReactMarkdown>
+                        </div>
+                        <div style={{ marginRight: '3%', flex: 1 }}>
+                          {message.type !== 'apiMessage' &&
+                            index === messages.length - 2 && (
+                              <RestartAltIcon
+                                style={{
+                                  float: 'right',
+                                  fontSize: '30px',
+                                  opacity: '0.6',
+                                }}
+                                onClick={(e) => handleSubmit(e,true)}
+                              />
+                            )}
                         </div>
                       </div>
                       {message.sourceDocs && (
