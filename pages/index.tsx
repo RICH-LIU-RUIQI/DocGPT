@@ -37,6 +37,7 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [diaShow, setDiaShow] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
   const [functionState, setFunctionState] = useState<{
     search: boolean;
     historySummary: boolean;
@@ -65,100 +66,134 @@ export default function Home() {
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const msgRef = useRef(messages);
 
   useEffect(() => {
     textAreaRef.current?.focus();
   }, []);
 
-  //handle form submission
-  async function handleSubmit(e: any, reGenerate?: any) {
+  useEffect(() => {
+    if (loading === false) return;
+
+    let ans = '';
     let api: string;
     let question: string;
     let tmpHistory: [string, string][] | undefined;
+
     const reQuery = async (): Promise<string> => {
       const questionDict = messages.at(-2) as Message;
-      tmpHistory = messageState.history.slice(0, messageState.history.length - 1);
+      tmpHistory = messageState.history.slice(
+        0,
+        messageState.history.length - 1,
+      );
       setMessageState((state) => ({
-        history: 
-          state.history.slice(0, state.history.length - 1),
-        messages: 
-          state.messages.slice(0, state.messages.length - 1),
+        history: state.history.slice(0, state.history.length - 1),
+        messages: state.messages.slice(0, state.messages.length - 1),
       }));
       return questionDict.message;
     };
-
-    e.preventDefault();
-
-    setError(null);
-    if (reGenerate == true) {
-      question = await reQuery();
-    } else {
-      if (!query) {
-        alert('Please input a question');
-        return;
-      }
-
-      question = query.trim();
-
-      setMessageState((state) => ({
-        ...state,
-        messages: [
-          ...state.messages,
-          {
-            type: 'userMessage',
-            message: question,
-          },
-        ],
-      }));
-    }
-
-    setLoading(true);
-    setQuery('');
-    console.log('messageState ===', messageState);
-
-    try {
-      api = functionState.search ? apiDict.withSearch : apiDict.onlyDocs;
-      const response = await fetch(api, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question,
-          history: tmpHistory === undefined ? history : tmpHistory,
-          language: functionState.language,
-        }),
-      });
-      const data = await response.json();
-      // console.log('data from API ===', data);
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setMessageState((state) => ({
+    const handleMessage = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      ans += data;
+      console.log('ans ===', ans);
+      setMessageState((state) => {
+        let oldMsg = state.messages;
+        // whether delete the last one in hook: messages
+        const deleteLast: boolean = oldMsg.at(-1)?.type === 'apiMessage';
+        if (deleteLast) oldMsg = oldMsg.slice(0, oldMsg.length - 1);
+        return {
           ...state,
           messages: [
-            ...state.messages,
+            ...oldMsg,
             {
               type: 'apiMessage',
-              message: data.text,
-              sourceDocs: data.sourceDocuments,
+              message: ans,
+              sourceDocs: undefined,
             },
           ],
-          history: [...state.history, [question, data.text]],
-        }));
-      }
-      console.log('messageState', messageState);
+        };
+      });
+    };
 
-      setLoading(false);
+    question = query.trim();
+    setQuery('');
+    setMessageState((state) => ({
+      ...state,
+      messages: [
+        ...state.messages,
+        {
+          type: 'userMessage',
+          message: question,
+        },
+      ],
+    }));
+    const url = new URL('http://localhost:3000/api/chatStream');
+    url.searchParams.set(
+      'params',
+      JSON.stringify({
+        question,
+        history: tmpHistory === undefined ? history : tmpHistory,
+        language: functionState.language,
+      }),
+    );
+    const eventSource = new EventSource(url);
 
-      //scroll to bottom
-      messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
-    } catch (error) {
+    try {
+      // check connection
+      eventSource.addEventListener('open', (e) => {
+        console.log('Connect succeed');
+      });
+      // get streaming data flow
+      eventSource.addEventListener('generateAns', handleMessage);
+      // get error
+      // eventSource.addEventListener('error', (err) => {
+      //   console.log(err);
+      //   eventSource.close();
+      // });
+      return () => {
+        eventSource.close();
+        setLoading(false);
+      };
+    } catch {
       setLoading(false);
       setError('An error occurred while fetching the data. Please try again.');
       console.log('error', error);
+      return () => {
+        eventSource.close();
+        setLoading(false);
+      };
     }
+  }, [loading]);
+
+  //handle form submission
+  async function handleSubmit(e: any, reGenerate?: any) {
+    e.preventDefault();
+
+    setError(null);
+    // if (reGenerate == true) {
+    //   question = await reQuery();
+    // } else {
+    //   if (!query) {
+    //     alert('Please input a question');
+    //     return;
+    //   }
+
+    //   question = query.trim();
+
+    //   setMessageState((state) => ({
+    //     ...state,
+    //     messages: [
+    //       ...state.messages,
+    //       {
+    //         type: 'userMessage',
+    //         message: question,
+    //       },
+    //     ],
+    //   }));
+    // }
+    setLoading(true);
+    //scroll to bottom
+    messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
   }
 
   //prevent empty submissions
@@ -230,7 +265,7 @@ export default function Home() {
           <main className={styles.main}>
             <div className={styles.cloud}>
               <div ref={messageListRef} className={styles.messagelist}>
-                {messages.map((message, index) => {
+                {messageState.messages.map((message, index) => {
                   let icon;
                   let className;
                   if (message.type === 'apiMessage') {
@@ -282,7 +317,7 @@ export default function Home() {
                                   fontSize: '30px',
                                   opacity: '0.6',
                                 }}
-                                onClick={(e) => handleSubmit(e,true)}
+                                onClick={(e) => handleSubmit(e, true)}
                               />
                             )}
                         </div>
