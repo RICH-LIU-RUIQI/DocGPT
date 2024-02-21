@@ -37,6 +37,7 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [diaShow, setDiaShow] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [response, setResponse] = useState<string>('');
 
   const [functionState, setFunctionState] = useState<{
     search: boolean;
@@ -66,54 +67,16 @@ export default function Home() {
 
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const msgRef = useRef(messages);
+  const responseRef = useRef<string>('');
+  const tmpRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    textAreaRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (loading === false) return;
-
-    let ans = '';
-    let api: string;
+  const queryStream = () => {
+    const url = new URL('http://localhost:3000/api/chatStream');
     let question: string;
     let tmpHistory: [string, string][] | undefined;
 
-    const reQuery = async (): Promise<string> => {
-      const questionDict = messages.at(-2) as Message;
-      tmpHistory = messageState.history.slice(
-        0,
-        messageState.history.length - 1,
-      );
-      setMessageState((state) => ({
-        history: state.history.slice(0, state.history.length - 1),
-        messages: state.messages.slice(0, state.messages.length - 1),
-      }));
-      return questionDict.message;
-    };
-    const handleMessage = (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      ans += data;
-      console.log('ans ===', ans);
-      setMessageState((state) => {
-        let oldMsg = state.messages;
-        // whether delete the last one in hook: messages
-        const deleteLast: boolean = oldMsg.at(-1)?.type === 'apiMessage';
-        if (deleteLast) oldMsg = oldMsg.slice(0, oldMsg.length - 1);
-        return {
-          ...state,
-          messages: [
-            ...oldMsg,
-            {
-              type: 'apiMessage',
-              message: ans,
-              sourceDocs: undefined,
-            },
-          ],
-        };
-      });
-    };
+    responseRef.current = '';
+    setResponse('');
 
     question = query.trim();
     setQuery('');
@@ -127,7 +90,8 @@ export default function Home() {
         },
       ],
     }));
-    const url = new URL('http://localhost:3000/api/chatStream');
+    setLoading(true);
+
     url.searchParams.set(
       'params',
       JSON.stringify({
@@ -136,40 +100,91 @@ export default function Home() {
         language: functionState.language,
       }),
     );
-    const eventSource = new EventSource(url);
+    const eventSource = new EventSource('http://localhost:3000/api/test');
 
-    try {
-      // check connection
-      eventSource.addEventListener('open', (e) => {
-        console.log('Connect succeed');
-      });
-      // get streaming data flow
-      eventSource.addEventListener('generateAns', handleMessage);
-      // get error
-      // eventSource.addEventListener('error', (err) => {
-      //   console.log(err);
-      //   eventSource.close();
-      // });
-      return () => {
-        eventSource.close();
-        setLoading(false);
-      };
-    } catch {
+    eventSource.addEventListener('open', (e) => {
+      console.log('Connect succeed');
+    });
+    eventSource.addEventListener('customEvent', (e) => {
+      const data = JSON.parse(e.data);
+      console.log('Data ===', data);
+      if (data) {
+        responseRef.current += data;
+        console.log(responseRef.current);
+        setResponse(responseRef.current);
+      }
+      // console.log(responseRef.current);
+    });
+
+    eventSource.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      console.log('Data ===', data);
+      if (data) {
+        responseRef.current += data;
+        console.log(responseRef.current);
+        setResponse(responseRef.current);
+      }
+    };
+    eventSource.addEventListener('disconnect', (e) => {
       setLoading(false);
-      setError('An error occurred while fetching the data. Please try again.');
-      console.log('error', error);
-      return () => {
-        eventSource.close();
-        setLoading(false);
-      };
-    }
-  }, [loading]);
+      eventSource.close();
+    });
+    eventSource.addEventListener('error', (err) => {
+      console.log(err);
+      setLoading(false);
+      eventSource.close();
+    });
+  };
+
+  useEffect(() => {
+    textAreaRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    response.length &&
+      setMessageState((prev) => {
+        let oldMsg = prev.messages;
+        let oldHistory = prev.history;
+        const lastMsg = oldMsg.at(-1);
+        if (lastMsg && lastMsg.type === 'userMessage') {
+          return {
+            history: [...oldHistory],
+            messages: [
+              ...oldMsg,
+              {
+                type: 'apiMessage',
+                sourceDocs: undefined,
+                message: response,
+              },
+            ],
+          };
+        } else {
+          return {
+            history: [...oldHistory],
+            messages: [
+              ...oldMsg.slice(0, oldMsg.length - 1),
+              {
+                type: 'apiMessage',
+                sourceDocs: undefined,
+                message: response,
+              },
+            ],
+          };
+        }
+      });
+  }, [response]);
+
+  useEffect(() => {
+    if(loading) queryStream();
+  }, [loading])
 
   //handle form submission
   async function handleSubmit(e: any, reGenerate?: any) {
     e.preventDefault();
 
     setError(null);
+    messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
+    setLoading(true)
     // if (reGenerate == true) {
     //   question = await reQuery();
     // } else {
@@ -191,9 +206,8 @@ export default function Home() {
     //     ],
     //   }));
     // }
-    setLoading(true);
+    // setLoading(true);
     //scroll to bottom
-    messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
   }
 
   //prevent empty submissions
@@ -219,8 +233,8 @@ export default function Home() {
         </div>
         <div className="mx-auto flex flex-col gap-4" id="whole-content">
           <div style={{ display: 'flex' }}>
-            <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter ">
-              DocChat
+            <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter " ref={tmpRef}>
+               DocChat
             </h1>
             <div id="switch label" style={{ flexGrow: 1 }}>
               <FormControlLabel

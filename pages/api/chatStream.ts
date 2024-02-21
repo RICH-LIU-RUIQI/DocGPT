@@ -111,14 +111,19 @@ const streaming = async (props: {
   });
   let infoId = 0;
   for await (const chunk of stream) {
-    // console.log('chunk: ', chunk);
-    res.write(`event: generateAns\n`);
-    res.write(`id: ${infoId}\n`);
-    res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-    infoId += 1;
+    const uyt = setInterval(() => {
+      res.write(`event: generateAns\n`);
+      res.write(`id: ${infoId}\n`);
+      if (chunk) res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+      infoId += 1;
+    }, 500);
+    clearInterval(uyt);
   }
   const sourceDocuments = await documentPromise;
-  res.write(`event: generateDocs\n`);
-  res.write(`docs: ${JSON.stringify(sourceDocuments)}\n\n`);
+  // res.write(`event: generateDocs\n`);
+  // res.write(`docs: ${JSON.stringify(sourceDocuments)}\n\n`);
+  res.write(`event: disconnect\n`);
+  res.write(`data: 1\n\n`);
+
   res.end();
 };
