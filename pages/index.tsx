@@ -38,6 +38,7 @@ export default function Home() {
   const [diaShow, setDiaShow] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [response, setResponse] = useState<string>('');
+  const [referDocs, setReferDocs] = useState<any>(null);
 
   const [functionState, setFunctionState] = useState<{
     search: boolean;
@@ -68,15 +69,21 @@ export default function Home() {
   const messageListRef = useRef<HTMLDivElement>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const responseRef = useRef<string>('');
-  const tmpRef = useRef<HTMLDivElement>(null);
+  const referRef = useRef<any>(null);
 
-  const queryStream = () => {
+  const queryStream = (reGenerate: boolean = false) => {
     const url = new URL('http://localhost:3000/api/chatStream');
     let question: string;
     let tmpHistory: [string, string][] | undefined;
 
     responseRef.current = '';
+    referRef.current = null;
     setResponse('');
+    setReferDocs(null);
+
+    // if (reGenerate == true) {
+    //     question = await reQuery();
+    //   }
 
     question = query.trim();
     setQuery('');
@@ -100,20 +107,28 @@ export default function Home() {
         language: functionState.language,
       }),
     );
-    const eventSource = new EventSource('http://localhost:3000/api/test');
+    const eventSource = new EventSource(url);
 
     eventSource.addEventListener('open', (e) => {
       console.log('Connect succeed');
     });
-    eventSource.addEventListener('customEvent', (e) => {
-      const data = JSON.parse(e.data);
-      console.log('Data ===', data);
-      if (data) {
-        responseRef.current += data;
-        console.log(responseRef.current);
+    eventSource.addEventListener('generateAns', (e) => {
+      const data: {
+        msg: undefined | string;
+        docs: undefined | Document<Record<string, any>>[];
+      } = JSON.parse(e.data);
+      // console.log('Data ===', data);
+      if (data.msg) {
+        // sending answer
+        responseRef.current += data.msg;
+        // console.log(responseRef.current);
         setResponse(responseRef.current);
       }
-      // console.log(responseRef.current);
+      if (data.docs) {
+        // sending reference
+        referRef.current = data.docs;
+        setReferDocs(referRef.current);
+      }
     });
 
     eventSource.onmessage = (e) => {
@@ -141,7 +156,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    response.length &&
+    if (response.length) {
       setMessageState((prev) => {
         let oldMsg = prev.messages;
         let oldHistory = prev.history;
@@ -172,11 +187,35 @@ export default function Home() {
           };
         }
       });
+      messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
+    }
   }, [response]);
 
   useEffect(() => {
-    if(loading) queryStream();
-  }, [loading])
+    if (referDocs) {
+      setMessageState((prev) => {
+        let oldMsg = prev.messages;
+        let oldHistory = prev.history;
+        const lastMsg = oldMsg[oldMsg.length - 1];
+        return {
+          history: [...oldHistory],
+          messages: [
+            ...oldMsg.slice(0, oldMsg.length - 1),
+            {
+              type: 'apiMessage',
+              sourceDocs: referDocs,
+              message: lastMsg.message,
+            },
+          ],
+        };
+      });
+      messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
+    }
+  }, [referDocs]);
+
+  useEffect(() => {
+    if (loading) queryStream();
+  }, [loading]);
 
   //handle form submission
   async function handleSubmit(e: any, reGenerate?: any) {
@@ -184,7 +223,7 @@ export default function Home() {
 
     setError(null);
     messageListRef.current?.scrollTo(0, messageListRef.current.scrollHeight);
-    setLoading(true)
+    setLoading(true);
     // if (reGenerate == true) {
     //   question = await reQuery();
     // } else {
@@ -233,8 +272,8 @@ export default function Home() {
         </div>
         <div className="mx-auto flex flex-col gap-4" id="whole-content">
           <div style={{ display: 'flex' }}>
-            <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter " ref={tmpRef}>
-               DocChat
+            <h1 className="text-2xl font-bold leading-[1.1] tracking-tighter ">
+              DocChat
             </h1>
             <div id="switch label" style={{ flexGrow: 1 }}>
               <FormControlLabel

@@ -14,9 +14,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Content-Type', 'text/event-stream;charset-utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   const params = JSON.parse(req.query.params as string);
   const { question, history, language } = params;
   console.log('question', question);
@@ -111,19 +112,19 @@ const streaming = async (props: {
   });
   let infoId = 0;
   for await (const chunk of stream) {
-    const uyt = setInterval(() => {
-      res.write(`event: generateAns\n`);
-      res.write(`id: ${infoId}\n`);
-      if (chunk) res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-      infoId += 1;
-    }, 500);
-    clearInterval(uyt);
+      setTimeout(()=>{
+        console.log('wait...');
+        res.write(`event: generateAns\n`);
+        res.write(`id: ${infoId}\n`);
+        if (chunk) res.write(`data: ${JSON.stringify({msg: chunk, docs: undefined})}\n\n`);
+        infoId += 1;
+    }, 1);
+      
   }
   const sourceDocuments = await documentPromise;
-  // res.write(`event: generateDocs\n`);
-  // res.write(`docs: ${JSON.stringify(sourceDocuments)}\n\n`);
+  res.write(`event: generateAns\n`);
+  res.write(`data: ${JSON.stringify({msg: undefined, docs: sourceDocuments})}\n\n`);
   res.write(`event: disconnect\n`);
-  res.write(`data: 1\n\n`);
-
+  res.write(`data: over\n\n`);
   res.end();
 };
